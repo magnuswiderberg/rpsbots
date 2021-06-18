@@ -2,7 +2,9 @@
 @using SharedKernel.ApiModels_V1
 @using System.Linq.Expressions
 @using Core.Logic
+@using Microsoft.Extensions.Configuration
 
+@inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
 @inject IGameLogic GameLogic
@@ -19,13 +21,6 @@
                 Bot #@(_gameInput.Bots.IndexOf(bot) + 1)
                 <span class="btn btn-outline-secondary" @onclick="() => RemoveBot(bot)"><span class="oi oi-minus" aria-hidden="true"></span></span>
             </h3>
-            @*<div class="form-group row">
-                <label for="bot-name-@_gameInput.Bots.IndexOf(bot)" class="col-sm-2 col-form-label">Name of bot #@(_gameInput.Bots.IndexOf(bot)+1)</label>
-                <div class="col-sm-10">
-                    <input type="text" class="form-control" @bind-value="bot.Name" id="bot-name-@_gameInput.Bots.IndexOf(bot)" placeholder="Bot name">
-                    <ValidationMessage For="() => bot.Name" />
-                </div>
-            </div>*@
             <div class="form-group row">
                 <label for="bot-url-@_gameInput.Bots.IndexOf(bot)" class="col-sm-2 col-form-label">URL of bot #@(_gameInput.Bots.IndexOf(bot)+1)</label>
                 <div class="col-sm-10">
@@ -81,14 +76,13 @@
         _editContext = new EditContext(_gameInput);
         _messageStore = new ValidationMessageStore(_editContext);
 
-        // TODO: While developing
         _gameInput.Bots.Add(new Bot { Id = Guid.NewGuid().ToString() });
         _gameInput.Rules.Games = 100;
         foreach (var bot in _gameInput.Bots)
         {
             var index = _gameInput.Bots.IndexOf(bot);
-            if (index == 0) bot.Url = $"https://localhost:44325/bots/fa";
-            else bot.Url = $"https://localhost:44325/bots/random/{index}";
+            if (index == 0) bot.Url = $"{Configuration["Settings:ReferenceBotsBaseUrl"]}/bots/fa";
+            else bot.Url = $"{Configuration["Settings:ReferenceBotsBaseUrl"]}/bots/random/{index}";
         }
     }
 
@@ -104,10 +98,6 @@
         foreach (var bot in _gameInput.Bots)
         {
             var botIndex = _gameInput.Bots.IndexOf(bot);
-            //if (string.IsNullOrWhiteSpace(bot.Name))
-            //{
-            //    errors.Add(new ValidationError { Field = () => bot.Name, Message = "Name is empty", CssId = $"bot-name-{botIndex}" });
-            //}
             if (!Uri.IsWellFormedUriString(bot.Url, UriKind.Absolute))
             {
                 errors.Add(new ValidationError { Field = () => bot.Url, Message = "Url is invalid", CssId = $"bot-url-{botIndex}" });
@@ -117,10 +107,6 @@
         {
             errors.Add(new ValidationError { Field = () => _gameInput.Bots, Message = "Bot urls must be unique" });
         }
-        //if (_gameInput.Bots.Select(x => x.Name).Distinct().Count() != _gameInput.Bots.Count)
-        //{
-        //    errors.Add(new ValidationError { Field = () => _gameInput.Bots, Message = "Bot names must be unique" });
-        //}
 
         if (_gameInput.Rules.Games < 1)
         {
