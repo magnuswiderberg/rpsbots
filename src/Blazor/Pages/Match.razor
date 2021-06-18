@@ -1,0 +1,61 @@
+﻿@page "/match/{MatchId}"
+
+@using Core.Logic
+@using Core.Models
+@using System.Text.Json
+@using SharedKernel.ApiModels_V1
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject IGameLogic GameLogic
+
+@code
+{
+    [Parameter]
+    public string MatchId { get; set; }
+}
+
+@*<pre style="white-space: pre-wrap">
+    @JsonSerializer.Serialize(_matchRecord, new JsonSerializerOptions {WriteIndented = true})
+</pre>*@
+
+<h1>Match</h1>
+
+<h2>Scores</h2>
+<table class="table">
+    <tr>
+        <th>Bot</th>
+        <th>Wins</th>
+        <th>Draws</th>
+        <th>Losses</th>
+    </tr>
+    @foreach (var bot in _matchRecord.Competitors)
+    {
+        var score = _matchRecord.Scores[bot.Id];
+        <tr>
+            <td title="@bot.Url">@bot.Name</td>
+            <td>@score.Wins</td>
+            <td>@score.Draws</td>
+            <td>@score.Losses</td>
+        </tr>
+    }
+</table>
+
+
+@code
+{
+    private MatchRecord _matchRecord;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await GameLogic.PlayMatchAsync(_matchRecord, scores => StateHasChanged(), StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _matchRecord = await GameLogic.GetMatchAsync(MatchId);
+        if (_matchRecord == null) NavigationManager.NavigateTo("/", true);
+    }
+}

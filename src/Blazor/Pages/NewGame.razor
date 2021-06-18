@@ -1,0 +1,196 @@
+﻿@page "/newgame"
+@using SharedKernel.ApiModels_V1
+@using System.Linq.Expressions
+@using Core.Logic
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject IGameLogic GameLogic
+
+<h1>New game</h1>
+
+<EditForm OnSubmit="HandleSubmitAsync" EditContext="_editContext">
+
+    <fieldset>
+        <h2>Bots</h2>
+        @foreach (var bot in _gameInput.Bots)
+        {
+            <h3>
+                Bot #@(_gameInput.Bots.IndexOf(bot) + 1)
+                <span class="btn btn-outline-secondary" @onclick="() => RemoveBot(bot)"><span class="oi oi-minus" aria-hidden="true"></span></span>
+            </h3>
+            @*<div class="form-group row">
+                <label for="bot-name-@_gameInput.Bots.IndexOf(bot)" class="col-sm-2 col-form-label">Name of bot #@(_gameInput.Bots.IndexOf(bot)+1)</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" @bind-value="bot.Name" id="bot-name-@_gameInput.Bots.IndexOf(bot)" placeholder="Bot name">
+                    <ValidationMessage For="() => bot.Name" />
+                </div>
+            </div>*@
+            <div class="form-group row">
+                <label for="bot-url-@_gameInput.Bots.IndexOf(bot)" class="col-sm-2 col-form-label">URL of bot #@(_gameInput.Bots.IndexOf(bot)+1)</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" @bind-value="bot.Url" id="bot-url-@_gameInput.Bots.IndexOf(bot)" placeholder="Bot url, with path up to '/v1/...'">
+                    <ValidationMessage For="() => bot.Url" />
+                </div>
+            </div>
+        }
+        <ValidationMessage For="() => _gameInput.Bots" />
+        <div class="form-group row">
+            <div class="col-sm-12">
+                <span class="btn btn-outline-secondary" @onclick="AddBot"><span class="oi oi-plus" aria-hidden="true"></span> Add bot</span>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <h2>Rules</h2>
+
+        <div class="form-group row">
+            <div class="col-sm-2 col-form-label"></div>
+            <div class="col-sm-1">
+                <input type="number" min="1" class="form-control" @bind-value="_gameInput.Rules.Games" id="games">
+                <ValidationMessage For="() => _gameInput.Rules.Games" />
+            </div>
+            <div class="col-sm-2">
+                <label for="games">games</label>
+            </div>
+        </div>
+
+        <div class="form-group row">
+            <label for="best-of" class="col-sm-2 col-form-label">Best of</label>
+            <div class="col-sm-1">
+                <input type="number" min="3" class="form-control" @bind-value="_gameInput.Rules.BestOf" id="best-of">
+                <ValidationMessage For="() => _gameInput.Rules.BestOf" />
+            </div>
+        </div>
+    </fieldset>
+
+    <ValidationMessage For="() => _gameInput" />
+
+    <button type="submit" class="btn btn-primary" id="submit-button">Let's rumble</button>
+
+</EditForm>
+
+@code {
+    private readonly GameInput _gameInput = new GameInput();
+    private EditContext _editContext;
+    private ValidationMessageStore _messageStore;
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(_gameInput);
+        _messageStore = new ValidationMessageStore(_editContext);
+
+        // TODO: While developing
+        _gameInput.Bots.Add(new Bot { Id = Guid.NewGuid().ToString() });
+        _gameInput.Rules.Games = 100;
+        foreach (var bot in _gameInput.Bots)
+        {
+            var index = _gameInput.Bots.IndexOf(bot);
+            if (index == 0) bot.Url = $"https://localhost:44325/bots/fa";
+            else bot.Url = $"https://localhost:44325/bots/random/{index}";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await JsRuntime.InvokeVoidAsync("setFocus", "bot-url-0");
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _messageStore.Clear();
+        var errors = new List<ValidationError>();
+        foreach (var bot in _gameInput.Bots)
+        {
+            var botIndex = _gameInput.Bots.IndexOf(bot);
+            //if (string.IsNullOrWhiteSpace(bot.Name))
+            //{
+            //    errors.Add(new ValidationError { Field = () => bot.Name, Message = "Name is empty", CssId = $"bot-name-{botIndex}" });
+            //}
+            if (!Uri.IsWellFormedUriString(bot.Url, UriKind.Absolute))
+            {
+                errors.Add(new ValidationError { Field = () => bot.Url, Message = "Url is invalid", CssId = $"bot-url-{botIndex}" });
+            }
+        }
+        if (_gameInput.Bots.Select(x => x.Url).Distinct().Count() != _gameInput.Bots.Count)
+        {
+            errors.Add(new ValidationError { Field = () => _gameInput.Bots, Message = "Bot urls must be unique" });
+        }
+        //if (_gameInput.Bots.Select(x => x.Name).Distinct().Count() != _gameInput.Bots.Count)
+        //{
+        //    errors.Add(new ValidationError { Field = () => _gameInput.Bots, Message = "Bot names must be unique" });
+        //}
+
+        if (_gameInput.Rules.Games < 1)
+        {
+            errors.Add(new ValidationError { Field = () => _gameInput.Rules.Games, Message = "Number of games must be at least 1", CssId = "games" });
+        }
+        if (_gameInput.Rules.BestOf < 3)
+        {
+            errors.Add(new ValidationError { Field = () => _gameInput.Rules.BestOf, Message = "Best of must be at least 3", CssId = "best-of" });
+        }
+        else if (_gameInput.Rules.BestOf % 2 == 0)
+        {
+            errors.Add(new ValidationError { Field = () => _gameInput.Rules.BestOf, Message = "Best of must be an odd number", CssId = "best-of" });
+        }
+
+        if (errors.Any())
+        {
+            foreach (var error in errors)
+            {
+                _messageStore.Add(error.Field, error.Message);
+                if (errors.IndexOf(error) == 0 && error.CssId != null)
+                {
+                    await JsRuntime.InvokeVoidAsync("setFocus", error.CssId);
+                }
+            }
+            return;
+        }
+
+        await JsRuntime.InvokeVoidAsync("disableElement", "submit-button");
+
+        // Validation passed, create match
+        try
+        {
+            var match = await GameLogic.CreateMatchAsync(_gameInput.Bots, _gameInput.Rules);
+            NavigationManager.NavigateTo($"/match/{match.Id}", true);
+
+        }
+        catch (Exception e)
+        {
+            await JsRuntime.InvokeVoidAsync("enableElement", "submit-button");
+            _messageStore.Add(() => _gameInput, e.Message);
+        }
+    }
+
+    private class ValidationError
+    {
+        public Expression<Func<object>> Field { get; set; }
+        public string Message { get; set; }
+        public string CssId { get; set; }
+    }
+
+    private class GameInput
+    {
+        public List<Bot> Bots { get; } = new List<Bot>
+    {
+            new Bot { Id = Guid.NewGuid().ToString() },
+            new Bot { Id = Guid.NewGuid().ToString() }
+        };
+        public Rules Rules { get; } = new Rules { BestOf = 3, Games = 100, SameOutcomeLimit = 10 };
+    }
+
+    private async Task AddBot()
+    {
+        _gameInput.Bots.Add(new Bot { Id = Guid.NewGuid().ToString() });
+        await Task.Yield();
+    }
+
+    private async Task RemoveBot(Bot bot)
+    {
+        _gameInput.Bots.Remove(bot);
+        await Task.Yield();
+    }
+
+}
