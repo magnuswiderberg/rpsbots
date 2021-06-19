@@ -168,6 +168,9 @@ namespace Core.Logic
                 }
             }
 
+            match.Winner = match.Competitors.FirstOrDefault(x => x.Id == winnerId);
+            await _storage.UpdateMatch(match);
+
             var feedback = new MatchFeedback
             {
                 Winner = winnerId,
