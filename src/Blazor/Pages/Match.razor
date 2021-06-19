@@ -3,7 +3,6 @@
 @using Core.Logic
 @using Core.Models
 @using System.Text.Json
-@using SharedKernel.ApiModels_V1
 
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
@@ -20,8 +19,17 @@
 </pre>*@
 
 <h1>Match</h1>
+<p>
+    @if (_matchRecord.Winner == null)
+    {
+        <span class="oi oi-action-redo spin"></span>
+    }
+    else
+    {
+        <br />
+    }
+</p>
 
-<h2>Scores</h2>
 <table class="table">
     <tr>
         <th>Bot</th>
@@ -32,7 +40,7 @@
     @foreach (var bot in _matchRecord.Competitors)
     {
         var score = _matchRecord.Scores[bot.Id];
-        <tr>
+        <tr class="@(bot == _matchRecord.Winner ? "winner" : "")">
             <td title="@bot.Url">@bot.Name</td>
             <td>@score.Wins</td>
             <td>@score.Draws</td>

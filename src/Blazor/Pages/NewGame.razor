@@ -19,7 +19,7 @@
         {
             <h3>
                 Bot #@(_gameInput.Bots.IndexOf(bot) + 1)
-                <span class="btn btn-outline-secondary" @onclick="() => RemoveBot(bot)"><span class="oi oi-minus" aria-hidden="true"></span></span>
+                &nbsp;<span title="Remove bot" @onclick="() => RemoveBot(bot)" class="oi oi-minus cursor-link" aria-hidden="true"></span>
             </h3>
             <div class="form-group row">
                 <label for="bot-url-@_gameInput.Bots.IndexOf(bot)" class="col-sm-2 col-form-label">URL of bot #@(_gameInput.Bots.IndexOf(bot)+1)</label>

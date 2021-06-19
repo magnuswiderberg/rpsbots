@@ -11,6 +11,7 @@ namespace Core.Models
         public DateTimeOffset CompletedAt { get; set; }
 
         public List<Bot> Competitors { get; set; }
+        public Bot Winner { get; set; }
         public Dictionary<string, BotMatchScore> Scores { get; set; }
         public Rules Rules { get; set; }
     }
