@@ -15,6 +15,8 @@
         /// </summary>
         public int BestOf { get; set; }
 
+        public int ThrowsToWin => BestOf / 2 + 1;
+
         /// <summary>
         /// The maximum number of times in a row that bots can show the same throw.
         /// After that, the game is considered a draw.
