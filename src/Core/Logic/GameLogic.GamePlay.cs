@@ -55,26 +55,31 @@ namespace Core.Logic
         public async Task PlayGameAsync(MatchRecord match, GameRecord game, Bot competitor1, Bot competitor2)
         {
             var gameScores = new Dictionary<string, int> { { competitor1.Id, 0 }, { competitor2.Id, 0 } };
-            var throwsToWin = match.Rules.BestOf / 2 + 1;
             var throwCount = 0;
+            var sameOutcomeCount = 0;
             Bot winner = null;
-            while (++throwCount <= match.Rules.SameOutcomeLimit)
+            do
             {
+                throwCount++;
                 var throwRecord = await _storage.CreateThrowAsync(match, game, gameScores[competitor1.Id], gameScores[competitor2.Id]);
                 var (shape1, shape2) = await MakeMovesAsync(match, game, throwRecord, competitor1, competitor2);
                 var throwWinner = CalculateThrowWinner(competitor1, shape1, competitor2, shape2);
-
                 await ThrowFeedback(throwCount, throwWinner, competitor1, shape1, competitor2, shape2, match, game, throwRecord);
 
-                if (throwWinner == null) continue;
-                if (++gameScores[throwWinner.Id] >= throwsToWin)
+                if (throwWinner == null)
+                {
+                    sameOutcomeCount++;
+                    continue;
+                }
+                sameOutcomeCount = 0;
+                if (++gameScores[throwWinner.Id] >= match.Rules.ThrowsToWin)
                 {
                     winner = throwWinner;
                     break;
                 }
-            }
+            } while (sameOutcomeCount <= match.Rules.SameOutcomeLimit);
 
-            UpdateMatchScores(match, competitor1, competitor2, gameScores, throwsToWin);
+            UpdateMatchScores(match, competitor1, competitor2, gameScores, match.Rules.ThrowsToWin);
             await GameFeedbackAsync(winner, gameScores, competitor1, competitor2, match, game);
         }
 
